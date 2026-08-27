@@ -1,0 +1,61 @@
+make
+
+./checkdocs -pfg examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/smt_ind.pfg
+./checkdocs -marshal examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/smt_ind.pfg
+./checkdocs examples/hotg.thy.pfg.bin examples/hotgdocsMay2022.pfg.bin examples/smt_ind.pfg.bin
+
+./checkdocs -pfg examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/smt_pigeonhole1.pfg
+./checkdocs -marshal examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/smt_pigeonhole1.pfg
+./checkdocs examples/hotg.thy.pfg.bin examples/hotgdocsMay2022.pfg.bin examples/smt_pigeonhole1.pfg.bin
+
+./checkdocs -pfg examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/smt_pigeonhole2.pfg
+./checkdocs -marshal examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/smt_pigeonhole2.pfg
+./checkdocs examples/hotg.thy.pfg.bin examples/hotgdocsMay2022.pfg.bin examples/smt_pigeonhole2.pfg.bin
+
+./checkdocs -pfg examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/smt_sb.pfg
+./checkdocs -marshal examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/smt_sb.pfg
+./checkdocs examples/hotg.thy.pfg.bin examples/hotgdocsMay2022.pfg.bin examples/smt_sb.pfg.bin
+
+./checkdocs -pfg examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_3.pfg
+./checkdocs -marshal examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_3.pfg
+./checkdocs examples/hotg.thy.pfg.bin examples/hotgdocsMay2022.pfg.bin examples/idl_3.pfg.bin
+./checkdocs -pfg examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_4.pfg
+./checkdocs -marshal examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_4.pfg
+./checkdocs examples/hotg.thy.pfg.bin examples/hotgdocsMay2022.pfg.bin examples/idl_4.pfg.bin
+./checkdocs -pfg examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_5.pfg
+./checkdocs -marshal examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_5.pfg
+./checkdocs examples/hotg.thy.pfg.bin examples/hotgdocsMay2022.pfg.bin examples/idl_5.pfg.bin
+./checkdocs -pfg examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_6.pfg
+./checkdocs -marshal examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_6.pfg
+./checkdocs examples/hotg.thy.pfg.bin examples/hotgdocsMay2022.pfg.bin examples/idl_6.pfg.bin
+./checkdocs -pfg examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_7.pfg
+./checkdocs -marshal examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_7.pfg
+./checkdocs examples/hotg.thy.pfg.bin examples/hotgdocsMay2022.pfg.bin examples/idl_7.pfg.bin
+./checkdocs -pfg examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_8.pfg
+./checkdocs -marshal examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_8.pfg
+./checkdocs examples/hotg.thy.pfg.bin examples/hotgdocsMay2022.pfg.bin examples/idl_8.pfg.bin
+./checkdocs -pfg examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_9.pfg
+./checkdocs -marshal examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_9.pfg
+./checkdocs examples/hotg.thy.pfg.bin examples/hotgdocsMay2022.pfg.bin examples/idl_9.pfg.bin
+./checkdocs -pfg examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_10.pfg
+./checkdocs -marshal examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_10.pfg
+./checkdocs examples/hotg.thy.pfg.bin examples/hotgdocsMay2022.pfg.bin examples/idl_10.pfg.bin
+./checkdocs -pfg examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_11.pfg
+./checkdocs -marshal examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_11.pfg
+./checkdocs examples/hotg.thy.pfg.bin examples/hotgdocsMay2022.pfg.bin examples/idl_11.pfg.bin
+./checkdocs -pfg examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_12.pfg
+./checkdocs -marshal examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_12.pfg
+./checkdocs examples/hotg.thy.pfg.bin examples/hotgdocsMay2022.pfg.bin examples/idl_12.pfg.bin
+./checkdocs -pfg examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_13.pfg
+./checkdocs -marshal examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_13.pfg
+./checkdocs examples/hotg.thy.pfg.bin examples/hotgdocsMay2022.pfg.bin examples/idl_13.pfg.bin
+./checkdocs -pfg examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_14.pfg
+./checkdocs -marshal examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_14.pfg
+./checkdocs examples/hotg.thy.pfg.bin examples/hotgdocsMay2022.pfg.bin examples/idl_14.pfg.bin
+./checkdocs -pfg examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_15.pfg
+./checkdocs -marshal examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_15.pfg
+./checkdocs examples/hotg.thy.pfg.bin examples/hotgdocsMay2022.pfg.bin examples/idl_15.pfg.bin
+./checkdocs -pfg examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_16.pfg
+./checkdocs -marshal examples/hotg.thy.pfg examples/hotgdocsMay2022.pfg examples/idl_16.pfg
+./checkdocs examples/hotg.thy.pfg.bin examples/hotgdocsMay2022.pfg.bin examples/idl_16.pfg.bin
+

@@ -1,0 +1,32 @@
+Theory
+Base set
+Prim p0 : TpArr TpArr set Prop set
+Axiom n0 : All v0 TpArr set Prop All v1 set Imp Ap v0 v1 Ap v0 Ap Prim 0 v0
+Def n1 : Prop := All v0 Prop v0
+Def n2 : TpArr Prop Prop := Lam v0 Prop Imp v0 n1
+Def n3 : TpArr Prop TpArr Prop Prop := Lam v0 Prop Lam v1 Prop All v2 Prop Imp Imp v0 Imp v1 v2 v2
+Def n4 : TpArr Prop TpArr Prop Prop := Lam v0 Prop Lam v1 Prop All v2 Prop Imp Imp v0 v2 Imp Imp v1 v2 v2
+Def n5 : TpArr Prop TpArr Prop Prop := Lam v0 Prop Lam v1 Prop Ap Ap n3 Imp v0 v1 Imp v1 v0
+Axiom n6 : All v0 Prop All v1 Prop Imp Ap Ap n5 v0 v1 All v2 TpArr Prop TpArr Prop Prop Imp Ap Ap v2 v0 v1 Ap Ap v2 v1 v0
+Prim p1 : TpArr set TpArr set Prop
+Def n7 : TpArr set TpArr set Prop := Lam v0 set Lam v1 set All v2 set Imp Ap Ap Prim 1 v2 v0 Ap Ap Prim 1 v2 v1
+Axiom n8 : All v0 set All v1 set Imp Ap Ap n7 v0 v1 Imp Ap Ap n7 v1 v0 All v2 TpArr set TpArr set Prop Imp Ap Ap v2 v0 v1 Ap Ap v2 v1 v0
+Axiom n9 : All v0 TpArr set Prop Imp All v1 set Imp All v2 set Imp Ap Ap Prim 1 v2 v1 Ap v0 v2 Ap v0 v1 All v1 set Ap v0 v1
+Prim p2 : set
+Axiom n10 : Ap n2 All v0 Prop Imp All v1 set Imp Ap Ap Prim 1 v1 Prim 2 v0 v0
+Prim p3 : TpArr set set
+Axiom n11 : All v0 set All v1 set Ap Ap n5 Ap Ap Prim 1 v1 Ap Prim 3 v0 All v2 Prop Imp All v3 set Imp Ap Ap n3 Ap Ap Prim 1 v1 v3 Ap Ap Prim 1 v3 v0 v2 v2
+Prim p4 : TpArr set set
+Axiom n12 : All v0 set All v1 set Ap Ap n5 Ap Ap Prim 1 v1 Ap Prim 4 v0 Ap Ap n7 v1 v0
+Prim p5 : TpArr set TpArr TpArr set set set
+Axiom n13 : All v0 set All v1 TpArr set set All v2 set Ap Ap n5 Ap Ap Prim 1 v2 Ap Ap Prim 5 v0 v1 All v3 Prop Imp All v4 set Imp Ap Ap n3 Ap Ap Prim 1 v4 v0 All v5 TpArr set TpArr set Prop Imp Ap Ap v5 v2 Ap v1 v4 Ap Ap v5 Ap v1 v4 v2 v3 v3
+Def n14 : TpArr set Prop := Lam v0 set All v1 set Imp Ap Ap Prim 1 v1 v0 Ap Ap n7 v1 v0
+Def n15 : TpArr set Prop := Lam v0 set All v1 set Imp Ap Ap Prim 1 v1 v0 Ap Ap Prim 1 Ap Prim 3 v1 v0
+Def n16 : TpArr set Prop := Lam v0 set All v1 set Imp Ap Ap Prim 1 v1 v0 Ap Ap Prim 1 Ap Prim 4 v1 v0
+Def n17 : TpArr set Prop := Lam v0 set All v1 set Imp Ap Ap Prim 1 v1 v0 All v2 TpArr set set Imp All v3 set Imp Ap Ap Prim 1 v3 v1 Ap Ap Prim 1 Ap v2 v3 v0 Ap Ap Prim 1 Ap Ap Prim 5 v1 v2 v0
+Def n18 : TpArr set Prop := Lam v0 set Ap Ap n3 Ap Ap n3 Ap n15 v0 Ap n16 v0 Ap n17 v0
+Prim p6 : TpArr set set
+Axiom n19 : All v0 set Ap Ap Prim 1 v0 Ap Prim 6 v0
+Axiom n20 : All v0 set Ap n14 Ap Prim 6 v0
+Axiom n21 : All v0 set Ap n18 Ap Prim 6 v0
+Axiom n22 : All v0 set All v1 set Imp Ap Ap Prim 1 v0 v1 Imp Ap n14 v1 Imp Ap n18 v1 Ap Ap n7 Ap Prim 6 v0 v1
