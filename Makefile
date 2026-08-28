@@ -28,6 +28,8 @@ pas: Makefile bin $(S2NO) $(BINOBJ)
 clean:
 	rm -f bin/* *.o *.cmx *.cmi *.cma *.cmxa *.a *.so *~ *annot gmon.out ocamlprof.dump pas
 
+rebuild: clean pas
+
 # GENERAL
 
 bin/%.cmx: src/%.ml Makefile
