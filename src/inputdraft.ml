@@ -81,85 +81,87 @@ let rec input_stp bash ch tvl =
       raise (Failure (Printf.sprintf "Unknown type %s" l));;
 
 let rec input_trm bash trmh ch tvl vl =
+  let ps = Int64.to_int (In_channel.pos ch) in
   let l = input_token ch in
   if l = "Ap" then
     let m1 = input_trm bash trmh ch tvl vl in
     let m2 = input_trm bash trmh ch tvl vl in
-    Logic.Ap(m1,m2)
+    Logic.Ap(ps,m1,m2)
   else if l = "Lam" then
     let x = input_token ch in
     let a = input_stp bash ch tvl in
     let m2 = input_trm bash trmh ch tvl (x::vl) in
-    Logic.Lam(a,m2)
+    Logic.Lam(ps,a,m2)
   else if l = "Imp" then
     let m1 = input_trm bash trmh ch tvl vl in
     let m2 = input_trm bash trmh ch tvl vl in
-    Logic.Imp(m1,m2)
+    Logic.Imp(ps,m1,m2)
   else if l = "All" then
     let x = input_token ch in
     let a = input_stp bash ch tvl in
     let m2 = input_trm bash trmh ch tvl (x::vl) in
-    Logic.All(a,m2)
+    Logic.All(ps,a,m2)
   else if l = "Ex" then
     let x = input_token ch in
     let a = input_stp bash ch tvl in
     let m2 = input_trm bash trmh ch tvl (x::vl) in
-    Logic.Ex(a,m2)
+    Logic.Ex(ps,a,m2)
   else if l = "Eq" then
     let a = input_stp bash ch tvl in
     let m2 = input_trm bash trmh ch tvl vl in
     let m3 = input_trm bash trmh ch tvl vl in
-    Logic.Eq(a,m2,m3)
+    Logic.Eq(ps,a,m2,m3)
   else if l = "Prim" then
     let x = input_token ch in
     let i = int_of_string x in
     if i >= 0 then
-      Logic.Prim(i)
+      Logic.Prim(ps,i)
     else
       raise (Failure "negative primitive?")
   else
     try
-      let (_,m) = Hashtbl.find trmh l in
-      m
+      let i = pos l vl in
+      Logic.DB(ps,i)
     with Not_found ->
       try
-	let i = pos l vl in
-	Logic.DB(i)
+        let (_,m) = Hashtbl.find trmh l in
+        m
       with Not_found ->
 	raise (Failure (Printf.sprintf "Unknown term %s" l));;
 
 let rec input_pf bash trmh proph ch tvl vl hl =
+  let ps = Int64.to_int (In_channel.pos ch) in
   let l = input_token ch in
   if l = "PrAp" then
     let d1 = input_pf bash trmh proph ch tvl vl hl in
     let d2 = input_pf bash trmh proph ch tvl vl hl in
-    Logic.PrAp(d1,d2)
+    Logic.PrAp(ps,d1,d2)
   else if l = "TmAp" then
     let d1 = input_pf bash trmh proph ch tvl vl hl in
     let m2 = input_trm bash trmh ch tvl vl in
-    Logic.TmAp(d1,m2)
+    Logic.TmAp(ps,d1,m2)
   else if l = "PrLa" then
     let x = input_token ch in
     let p1 = input_trm bash trmh ch tvl vl in
     let d2 = input_pf bash trmh proph ch tvl vl (x::hl) in
-    Logic.PrLa(p1,d2)
+    Logic.PrLa(ps,p1,d2)
   else if l = "TmLa" then
     let x = input_token ch in
     let a1 = input_stp bash ch tvl in
     let d2 = input_pf bash trmh proph ch tvl (x::vl) hl in
-    Logic.TmLa(a1,d2)
+    Logic.TmLa(ps,a1,d2)
   else if l = "Ext" then
     let a1 = input_stp bash ch tvl in
     let a2 = input_stp bash ch tvl in
-    Logic.Ext(a1,a2)
+    Logic.Ext(ps,a1,a2)
   else
     try
       let h = Hashtbl.find proph l in
-      Logic.Known(h)
+      Logic.Known(ps,h)
     with Not_found ->
       try
 	let i = pos l hl in
-	Logic.Hyp(i)
+	Logic.Hyp(ps,i)
       with Not_found ->
 	raise (Failure (Printf.sprintf "Unknown known or hyp ref %s" l))
 
@@ -235,7 +237,7 @@ let input_theoryspec ch =
 	    let nm = input_token ch in
 	    if not (input_token ch = ":") then raise (Failure "bad format for type of Prim");
 	    let a = input_stp baseh ch [] in
-	    Hashtbl.add trmh nm (a,Logic.Prim(!primc));
+	    Hashtbl.add trmh nm (a,Logic.Prim(0,!primc));
 	    incr primc;
 	    thyspec := Logic.Thyprim(a)::!thyspec)
       else if l = "Def" then
@@ -248,7 +250,7 @@ let input_theoryspec ch =
 	    let m = input_trm baseh trmh ch [] [] in
 	    match Checking.beta_eta_norm_fixed (ref 0) m with
 	    | Some(m) ->
-		Hashtbl.add trmh nm (a,Logic.TmH(Mathdata.tm_hashroot m));
+		Hashtbl.add trmh nm (a,Logic.TmH(0,Mathdata.tm_hashroot m));
 		thyspec := Logic.Thydef(a,m)::!thyspec
 	    | None -> raise (Failure (Printf.sprintf "trouble normalizing Def %s" nm)))
       else if l = "Axiom" then
@@ -300,6 +302,7 @@ let input_doc_2 ch th =
   in
   try
     while true do
+      let ps = Int64.to_int (In_channel.pos ch) in
       let l = input_token ch in
       if l = "DocumentEnd" then
         raise Exit
@@ -380,10 +383,10 @@ let input_doc_2 ch th =
 	    let nm = input_token ch in
 	    if not (input_token ch = ":") then raise (Failure "bad format for type of Prim");
 	    let a = input_stp baseh ch [] in
-	    Hashtbl.add trmh nm (a,Logic.TmH(h));
+	    Hashtbl.add trmh nm (a,Logic.TmH(0,h));
 	    Hashtbl.add paramh nm (a,h);
 	    Hashtbl.add objhrev h nm;
-	    doc := Logic.Docparam(h,a)::!doc)
+	    doc := Logic.Docparam(ps,h,a)::!doc)
       else if l = "Def" then
 	pr l
 	  (fun () ->
@@ -395,10 +398,10 @@ let input_doc_2 ch th =
 	    match Checking.beta_eta_norm_fixed (ref 0) m with
 	    | Some(m) ->
 		let h = Mathdata.tm_hashroot m in
-		Hashtbl.add trmh nm (a,Logic.TmH(h));
+		Hashtbl.add trmh nm (a,Logic.TmH(0,h));
 		Hashtbl.add defh nm h; (* definition; if this is "new" then an owner and rights will be given *)
 		Hashtbl.add objhrev h nm;
-		doc := Logic.Docdef(a,m)::!doc
+		doc := Logic.Docdef(ps,a,m)::!doc
 	    | None -> raise (Failure (Printf.sprintf "trouble normalizing Def %s" nm)))
       else if l = "Known" then
 	pr l
@@ -411,7 +414,7 @@ let input_doc_2 ch th =
 		let h = Mathdata.tm_hashroot m in
 		Hashtbl.add proph nm h;
 		Hashtbl.add prophrev h nm;
-		doc := Logic.Docknown(m)::!doc
+		doc := Logic.Docknown(ps,m)::!doc
 	    | None -> raise (Failure (Printf.sprintf "trouble normalizing Axiom %s" nm)))
       else if l = "Conj" then
 	pr l
@@ -424,7 +427,7 @@ let input_doc_2 ch th =
  	        let h = Mathdata.tm_hashroot m in
 		Hashtbl.add conjh nm h; (* conjecture: a bounty can be declared *)
 		Hashtbl.add prophrev h nm;
-		doc := Logic.Docconj(m)::!doc
+		doc := Logic.Docconj(ps,m)::!doc
 	    | None -> raise (Failure (Printf.sprintf "trouble normalizing Axiom %s" nm)))
       else if l = "Thm" then
 	pr l
@@ -440,7 +443,7 @@ let input_doc_2 ch th =
 		Hashtbl.add proph nm h;
 		Hashtbl.add prophrev h nm;
 		Hashtbl.add thmh nm h; (* theorem: if this is a newly proven proposition, then an owner and rights will be declared *)
-		doc := Logic.Docpfof(m,d)::!doc
+		doc := Logic.Docpfof(ps,m,d)::!doc
 	    | None -> raise (Failure (Printf.sprintf "trouble normalizing Axiom %s" nm)))
       else
 	raise (Failure (Printf.sprintf "Unknown document item %s" l))

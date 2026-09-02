@@ -109,15 +109,22 @@ begin
        begin
          match hr with
          | (h::hr) -> checkpfgdocs_main stdout false h hr
-         | _ -> Printf.printf "Expected: checkdocs [-pfg|-marshal] <theoryfile> [<docsfile1> ... <docsfilen>]\nNo files given.\n"
+         | _ -> Printf.printf "Expected: checkdocs [-pfg|-pfgdebug|-marshal] <theoryfile> [<docsfile1> ... <docsfilen>]\nNo files given.\n"
+       end
+     else if h = "-pfgdebug" then
+       begin
+         debug := true;
+         match hr with
+         | (h::hr) -> checkpfgdocs_main stdout false h hr
+         | _ -> Printf.printf "Expected: checkdocs [-pfg|-pfgdebug|-marshal] <theoryfile> [<docsfile1> ... <docsfilen>]\nNo files given.\n"
        end
      else if h = "-marshal" then
        begin
          match hr with
          | (h::hr) -> checkpfgdocs_main stdout true h hr
-         | _ -> Printf.printf "Expected: checkdocs [-pfg|-marshal] <theoryfile> [<docsfile1> ... <docsfilen>]\nNo files given.\n"
+         | _ -> Printf.printf "Expected: checkdocs [-pfg|-pfgdebug|-marshal] <theoryfile> [<docsfile1> ... <docsfilen>]\nNo files given.\n"
        end
      else
        checkdocs2_main stdout h hr
-  | _ -> Printf.printf "Expected: checkdocs [-pfg|-marshal] <theoryfile> [<docsfile1> ... <docsfilen>]\nNo files given.\n"
+  | _ -> Printf.printf "Expected: checkdocs [-pfg|-pfgdebug|-marshal] <theoryfile> [<docsfile1> ... <docsfilen>]\nNo files given.\n"
 end;;

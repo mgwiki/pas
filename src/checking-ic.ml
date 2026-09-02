@@ -11,7 +11,7 @@ open Hash
 open Logic
 open Mathdata
 
-
+let curritem = ref ""
 let counterbound = 150000000
 exception CheckingBd
 let cnt counter = (incr counter; if false (* !counter >= counterbound *) then raise CheckingBd)
@@ -114,15 +114,15 @@ let ftrma_trm counter (m,_,_,_) = failwith "ftrma_trm: unimplemented";;
 
 let rec trm_ftrma m =
   match m with
-  | TmH(h) -> mk_tmh h
-  | DB(i) -> mk_db i
-  | Prim(i) -> mk_prim i
-  | Ap(m1,m2) -> mk_ap (trm_ftrma m1) (trm_ftrma m2)
-  | Lam(a,m1) -> mk_lam (ty_f a) (trm_ftrma m1)
-  | Imp(m1,m2) -> mk_imp (trm_ftrma m1) (trm_ftrma m2)
-  | All(a,m1) -> mk_all (ty_f a) (trm_ftrma m1)
-  | Ex(a,m1) -> mk_ex (ty_f a) (trm_ftrma m1)
-  | Eq(a,m1,m2) -> mk_eq (ty_f a) (trm_ftrma m1) (trm_ftrma m2)
+  | TmH(_,h) -> mk_tmh h
+  | DB(_,i) -> mk_db i
+  | Prim(_,i) -> mk_prim i
+  | Ap(_,m1,m2) -> mk_ap (trm_ftrma m1) (trm_ftrma m2)
+  | Lam(_,a,m1) -> mk_lam (ty_f a) (trm_ftrma m1)
+  | Imp(_,m1,m2) -> mk_imp (trm_ftrma m1) (trm_ftrma m2)
+  | All(_,a,m1) -> mk_all (ty_f a) (trm_ftrma m1)
+  | Ex(_,a,m1) -> mk_ex (ty_f a) (trm_ftrma m1)
+  | Eq(_,a,m1,m2) -> mk_eq (ty_f a) (trm_ftrma m1) (trm_ftrma m2)
 
 (* >>>>>>>>>>>>>>>>>>>>>>> *)
 (* <<<<<<<<<<<<<<<<<<<<<<< *)
@@ -130,32 +130,40 @@ let rec trm_ftrma m =
 let rec get_stp_trm_raise counter ctx tys t thy =
   cnt counter;
   match t with
-  | DB i -> List.nth ctx i
-  | TmH h -> Hashtbl.find tys h
-  | Prim i -> List.nth thy i
-  | Ap (t1, t2) ->
+  | DB(pos,i) -> (try List.nth ctx i with exc -> if !debug then Printf.printf "%sdangling DB at pos %d; %s\n" !curritem pos (Printexc.to_string exc); raise exc);
+  | TmH(pos,h) -> (try Hashtbl.find tys h with exc -> if !debug then Printf.printf "%sunknown TmH at pos %d; %s\n" !curritem pos (Printexc.to_string exc); raise exc);
+  | Prim(pos,i) -> (try List.nth thy i with exc -> if !debug then Printf.printf "%sdangling Prim at pos %d; %s\n" !curritem pos (Printexc.to_string exc); raise exc);
+  | Ap (pos, t1, t2) ->
      let s = get_stp_trm_raise counter ctx tys t1 thy in
      (match s with
       | TpArr (b, alpha) ->
          let b2 = get_stp_trm_raise counter ctx tys t2 thy in
-         if b2 = b then alpha else raise Not_found
-      | _ -> raise Not_found)
-  | Lam (a1, t1) ->
+         if b2 = b then alpha else (if !debug then Printf.printf "%sAp arg type mismatch at %d\n" !curritem pos; raise Not_found)
+      | _ -> (if !debug then Printf.printf "%sAp func not arrow type at %d\n" !curritem pos; raise Not_found))
+  | Lam (_, a1, t1) ->
      TpArr (a1, get_stp_trm_raise counter (a1 :: ctx) tys t1 thy)
-  | Imp (t1, t2) ->
+  | Imp (pos, t1, t2) ->
      let a = get_stp_trm_raise counter ctx tys t1 thy in
      let b = get_stp_trm_raise counter ctx tys t2 thy in
-     if a = Prop && b = Prop then Prop else raise Not_found
-  | All (b, t1) | Ex (b, t1) ->
-     if get_stp_trm_raise counter (b :: ctx) tys t1 thy = Prop then Prop else raise Not_found
-  | Eq (b, t1, t2) ->
+     if a = Prop then
+       if b = Prop then
+         Prop
+       else
+         (if !debug then Printf.printf "%sconclusion of imp at %d is not type Prop\n" !curritem pos; raise Not_found)
+     else
+       (if !debug then Printf.printf "%santecedent of imp at %d is not type Prop\n" !curritem pos; raise Not_found)
+  | All (pos, b, t1) | Ex (pos, b, t1) ->
+     if get_stp_trm_raise counter (b :: ctx) tys t1 thy = Prop then
+       Prop
+     else
+       (if !debug then Printf.printf "%sbody of All or Ex at %d is not type Prop\n" !curritem pos; raise Not_found)
+  | Eq (pos, b, t1, t2) ->
      let b1 = get_stp_trm_raise counter ctx tys t1 thy
      and b2 = get_stp_trm_raise counter ctx tys t2 thy in
-     if b1 = b && b2 = b then Prop else raise Not_found;;
-
-
-
-
+     if b1 = b && b2 = b then
+       Prop
+     else
+       (if !debug then Printf.printf "%stype mismatch in Eq at %d\n" !curritem pos; raise Not_found);;
 
 let head_args t =
   let rec ha args tt =
@@ -219,34 +227,41 @@ let rec headnorm defs t =
 let rec get_prop_pf_raise counter ctx phi tys defs kl p thy : ftm =
   cnt counter;
   match p with
-  | Known h -> snd (Hashtbl.find kl h)
-  | Hyp i ->
-     let x = List.nth phi i in let (i, t) = !x in
-     if i = 0 then t else (let t' = uptrm t 0 i in x := (0, t'); t')
-  | PrAp (p1, p2) ->
+  | Known (pos, h) -> (try snd (Hashtbl.find kl h) with Not_found -> if !debug then Printf.printf "%sUnknown Known %s at %d\n" !curritem (hashval_hexstring h) pos; raise Not_found);
+  | Hyp (pos, i) ->
+     begin
+       try
+         let x = List.nth phi i in
+         let (i, t) = !x in
+         if i = 0 then t else (let t' = uptrm t 0 i in x := (0, t'); t')
+       with exc ->
+             if !debug then Printf.printf "%sdangling Hyp at %d; %s\n" !curritem pos (Printexc.to_string exc);
+             raise exc
+     end
+  | PrAp (pos,p1, p2) ->
      let t = headnorm defs (get_prop_pf_raise counter ctx phi tys defs kl p1 thy) in
-     if get_tag t <> FT_Imp then raise Not_found;
+     if get_tag t <> FT_Imp then (if !debug then Printf.printf "%sPrAp not Imp at %d\n" !curritem pos; raise Not_found);
      let t1 = get_l t and t2 = get_r t in
-     if not (conv defs [get_prop_pf_raise counter ctx phi tys defs kl p2 thy, t1]) then raise Not_found;
+     if not (conv defs [get_prop_pf_raise counter ctx phi tys defs kl p2 thy, t1]) then (if !debug then Printf.printf "%sPrAp mismatch at %d\n" !curritem pos; raise Not_found);
      t2
-  | TmAp (p1, t1) ->
+  | TmAp (pos, p1, t1) ->
      let t = headnorm defs (get_prop_pf_raise counter ctx phi tys defs kl p1 thy) in
-     if get_tag t <> FT_All then raise Not_found;
+     if get_tag t <> FT_All then (if !debug then Printf.printf "%sTmAp not All at %d\n" !curritem pos; raise Not_found);
      let a = get_no t and m = get_r t in
      let cx = get_maxv m in
-     if ty_f (get_stp_trm_raise counter ctx tys t1 thy) <> a then raise Not_found;
+     if ty_f (get_stp_trm_raise counter ctx tys t1 thy) <> a then (if !debug then Printf.printf "%sTmAp mismatch at %d\n" !curritem pos; raise Not_found);
      if cx <= 0 then m else
      if get_fv0_0 m then uptrm m 0 (-1) else
      let t1b = trm_ftrma t1 in
      subst m 0 t1b
-  | PrLa (s, p1) ->
-     if get_stp_trm_raise counter ctx tys s thy <> Prop then raise Not_found;
+  | PrLa (pos, s, p1) ->
+     if get_stp_trm_raise counter ctx tys s thy <> Prop then (if !debug then Printf.printf "%sPrLa bound not Prop at %d\n" !curritem pos; raise Not_found);
      let q = trm_ftrma s in
      mk_imp q (get_prop_pf_raise counter ctx ((ref (0, q)) :: phi) tys defs kl p1 thy)
-  | TmLa (a1, p1) ->
+  | TmLa (_, a1, p1) ->
      let phi2 = List.map (fun x -> let (i, t) = !x in ref (i + 1, t)) phi in
      mk_all (ty_f a1) (get_prop_pf_raise counter (a1 :: ctx) phi2 tys defs kl p1 thy)
-  | Ext (a, b) ->
+  | Ext (_, a, b) ->
      let ta = ty_f a and tb = ty_f b and taab = ty_f (TpArr(a,b)) in
      mk_all taab (mk_all taab (mk_imp
        (mk_all ta (mk_eq tb (mk_ap (mk_db 2) (mk_db 0)) (mk_ap (mk_db 1) (mk_db 0))))
@@ -263,8 +278,8 @@ let correct_pf_f counter ctx phi tys defs kl p t thy =
   | _ ->*)
      match get_prop_pf_raise counter ctx phi tys defs kl p thy with
      | pp -> conv defs [pp, t]
-     | exception Not_found -> false (* List.find *)
-     | exception Failure _ -> false (* List.nth *)
+     | exception Not_found -> Printf.printf "not found\n"; false (* List.find *)
+     | exception Failure fs -> Printf.printf "failure %s\n" fs; false (* List.nth *)
 
 (*
 let hashroots = Array.make 10000000 None;;
@@ -297,13 +312,13 @@ let tm_hashroot t = Utm.fold_id (Obj.magic tm_hashroot_fun) (Obj.magic t);;
 let rec free_trm_trm counter t i =
   cnt counter;
   match t with
-  | DB j -> i = j
-  | Ap (m1, m2) -> (||) (free_trm_trm counter m1 i) (free_trm_trm counter m2 i)
-  | Lam (_, m1) -> free_trm_trm counter m1 ((+) i 1)
-  | Imp (m1, m2) -> (||) (free_trm_trm counter m1 i) (free_trm_trm counter m2 i)
-  | All (_, m1) -> free_trm_trm counter m1 ((+) i 1)
-  | Ex (_, m1) -> free_trm_trm counter m1 ((+) i 1)
-  | Eq (_, m1, m2) -> (||) (free_trm_trm counter m1 i) (free_trm_trm counter m2 i)
+  | DB (_, j) -> i = j
+  | Ap (_, m1, m2) -> (||) (free_trm_trm counter m1 i) (free_trm_trm counter m2 i)
+  | Lam (_, _, m1) -> free_trm_trm counter m1 ((+) i 1)
+  | Imp (_, m1, m2) -> (||) (free_trm_trm counter m1 i) (free_trm_trm counter m2 i)
+  | All (_, _, m1) -> free_trm_trm counter m1 ((+) i 1)
+  | Ex (_, _, m1) -> free_trm_trm counter m1 ((+) i 1)
+  | Eq (_, _, m1, m2) -> (||) (free_trm_trm counter m1 i) (free_trm_trm counter m2 i)
   | _ -> false
 
 (** val is_norm : int ref -> trm -> bool **)
@@ -311,19 +326,24 @@ let rec free_trm_trm counter t i =
 let rec is_norm counter m =
   cnt counter;
   match m with
-  | Ap (Lam (_, _), m2) -> false
-  | Ap (m1, m2) -> is_norm counter m1 && is_norm counter m2
-  | Lam (_, Ap (f, DB 0)) when not (free_trm_trm counter f 0) -> false
-  | Lam (_, m1) -> is_norm counter m1
-  | Imp (m1, m2) -> is_norm counter m1 && is_norm counter m2
-  | All (_, m1) -> is_norm counter m1
-  | Ex (_, _) -> false
-  | Eq (_, _, _) -> false
+  | Ap (_, Lam (_, _, _), m2) -> false
+  | Ap (_, m1, m2) -> is_norm counter m1 && is_norm counter m2
+  | Lam (_, _, Ap (_, f, DB (_, 0))) when not (free_trm_trm counter f 0) -> false
+  | Lam (_, _, m1) -> is_norm counter m1
+  | Imp (_, m1, m2) -> is_norm counter m1 && is_norm counter m2
+  | All (_, _, m1) -> is_norm counter m1
+  | Ex (_, _, _) -> false
+  | Eq (_, _, _, _) -> false
   | _ -> true
 
 let rec tm_tp_f gvtp tys th h a =
   try let b = Hashtbl.find tys h in a = b
-  with Not_found -> gvtp th h a;;
+  with Not_found ->
+        try
+          gvtp th h a
+        with Not_found ->
+          Printf.printf "Unknown object %s\n" (hashval_hexstring h);
+          raise Not_found;;
 
 (** val check_doc_f : int ref ->
     (hashval option -> hashval -> stp -> bool) -> (hashval option -> hashval
@@ -337,36 +357,47 @@ let rec check_doc_f counter gvtp gvkn th thy d =
   let tys = Hashtbl.create 100 and defs = Hashtbl.create 100 and kl = Hashtbl.create 100 in
   let check_doc_f1 d0 () =
     match d0 with
-    | Docparam (h, a) ->
+    | Docparam (pos, h, a) ->
+       if !debug then curritem := Printf.sprintf "Param at %d\n" pos;
        if not (tm_tp_f gvtp tys th h a) then raise Exit else
        Hashtbl.add tys h a
-    | Docdef (_, TmH _) -> ()
-    | Docdef (a, m) ->
+    | Docdef (pos, _, TmH _) ->
+       if !debug then curritem := Printf.sprintf "Trivial Def at %d\n" pos
+    | Docdef (pos, a, m) ->
+       if !debug then curritem := Printf.sprintf "Def at %d\n" pos;
        if not (is_norm counter m) then raise Exit else
        let h = tm_hashroot m in
        let m2 = trm_ftrma m in
        Hashtbl.add tys h a;
        Hashtbl.add defs h (m, m2)
-    | Docknown p ->
+    | Docknown (pos, p) ->
+       if !debug then curritem := Printf.sprintf "Known at %d\n" pos;
        if not (is_norm counter p) then raise Exit else
        if get_stp_trm_raise counter [] tys p (fst thy) <> Prop then raise Exit else
        let k = tm_hashroot p in
        let exists_fun x = (x = k) in
-       if not (List.exists exists_fun (snd thy)) &&
-          not (Hashtbl.mem kl k || gvkn th k) then raise Exit else
-       let p2 = trm_ftrma p in
-       Hashtbl.add kl k (p, p2)
-    | Docpfof (p, d) ->
+       begin
+         try
+           if not (List.exists exists_fun (snd thy)) &&
+                not (Hashtbl.mem kl k || gvkn th k) then raise Exit else
+             let p2 = trm_ftrma p in
+             Hashtbl.add kl k (p, p2)
+         with Not_found ->
+               if !debug then Printf.printf "%sUnknown known %s\n" !curritem (hashval_hexstring k)
+       end
+    | Docpfof (pos, p, d) ->
+       if !debug then curritem := Printf.sprintf "Pfof at %d\n" pos;
        if not (is_norm counter p) then raise Exit;
        if get_stp_trm_raise counter [] tys p (fst thy) <> Prop then raise Exit;
        let p2 = trm_ftrma p in
        if not (correct_pf_f counter [] [] tys defs kl d p2 (fst thy)) then raise Exit else
        let k = tm_hashroot p in
        Hashtbl.add kl k (p, p2)
-    | Docconj p ->
+    | Docconj (pos, p) ->
+       if !debug then curritem := Printf.sprintf "Conj at %d\n" pos;
        if not (is_norm counter p) then raise Exit else
        if get_stp_trm_raise counter [] tys p (fst thy) <> Prop then raise Exit else ()
-    | Docsigna h -> raise (Failure "signatures are not allowed") (* C says "it's questionable if it even works" *)
+    | Docsigna (_, h) -> raise (Failure "signatures are not allowed")
   in
   try
     List.fold_right check_doc_f1 d ();
@@ -438,7 +469,7 @@ let shift_right_logical_90n_1 (x2,x1,x0) =
   (x2 lsr 1,((x2 land 1) lsl 29) lor (x1 lsr 1),((x1 land 1) lsl 29) lor (x0 lsr 1))
 
 let adb i =
-  if i >= dbbound then raise CheckingBd;
+  if i >= dbbound then (Printf.printf "db too high"; raise CheckingBd);
   (A_DB(i),bit_90n.(i),i+1,true)
 
 let atmh h = (A_TmH(h),zero_90n,0,true)
@@ -493,15 +524,15 @@ let aex a (m1,fv1,cx1,n1) =
 let rec atrm_trm counter m =
   cnt counter;
   match m with
-  | A_DB(i) -> DB(i)
-  | A_TmH(h) -> TmH(h)
-  | A_Prim(i) -> Prim(i)
-  | A_Ap(m1,m2) -> Ap(atrma_trm counter m1,atrma_trm counter m2)
-  | A_Lam(a,m1) -> Lam(a,atrma_trm counter m1)
-  | A_Imp(m1,m2) -> Imp(atrma_trm counter m1,atrma_trm counter m2)
-  | A_All(a,m1) -> All(a,atrma_trm counter m1)
-  | A_Ex(a,m1) -> Ex(a,atrma_trm counter m1)
-  | A_Eq(a,m1,m2) -> Eq(a,atrma_trm counter m1,atrma_trm counter m2)
+  | A_DB(i) -> DB(0,i)
+  | A_TmH(h) -> TmH(0,h)
+  | A_Prim(i) -> Prim(0,i)
+  | A_Ap(m1,m2) -> Ap(0,atrma_trm counter m1,atrma_trm counter m2)
+  | A_Lam(a,m1) -> Lam(0,a,atrma_trm counter m1)
+  | A_Imp(m1,m2) -> Imp(0,atrma_trm counter m1,atrma_trm counter m2)
+  | A_All(a,m1) -> All(0,a,atrma_trm counter m1)
+  | A_Ex(a,m1) -> Ex(0,a,atrma_trm counter m1)
+  | A_Eq(a,m1,m2) -> Eq(0,a,atrma_trm counter m1,atrma_trm counter m2)
 and atrma_trm counter (m,_,_,_) = atrm_trm counter m
 
 let rec uptrm_a counter (m,fv,cx,n) i j =
@@ -593,23 +624,23 @@ let rec find counter f l =
 let rec trm_atrma counter tmtpl m =
   cnt counter;
   match m with
-  | TmH(h) ->
+  | TmH(_,h) ->
      begin
        match find counter (fun ((k,_),_,_) -> k = h) tmtpl with
        | Some(_,_,Some(d)) -> d
        | _ -> atmh h
      end
-  | DB(i) -> adb i
-  | Prim(i) -> aprim i
-  | Ap(m1,m2) -> aap (trm_atrma counter tmtpl m1) (trm_atrma counter tmtpl m2)
-  | Lam(a,m1) -> alam a (trm_atrma counter tmtpl m1)
-  | Imp(m1,m2) -> aimp (trm_atrma counter tmtpl m1) (trm_atrma counter tmtpl m2)
-  | All(a,m1) -> aall a (trm_atrma counter tmtpl m1)
-  | Ex(a,m1) -> aex a (trm_atrma counter tmtpl m1)
-  | Eq(a,m1,m2) -> aeq a (trm_atrma counter tmtpl m1) (trm_atrma counter tmtpl m2)
+  | DB(_,i) -> adb i
+  | Prim(_,i) -> aprim i
+  | Ap(_,m1,m2) -> aap (trm_atrma counter tmtpl m1) (trm_atrma counter tmtpl m2)
+  | Lam(_,a,m1) -> alam a (trm_atrma counter tmtpl m1)
+  | Imp(_,m1,m2) -> aimp (trm_atrma counter tmtpl m1) (trm_atrma counter tmtpl m2)
+  | All(_,a,m1) -> aall a (trm_atrma counter tmtpl m1)
+  | Ex(_,a,m1) -> aex a (trm_atrma counter tmtpl m1)
+  | Eq(_,a,m1,m2) -> aeq a (trm_atrma counter tmtpl m1) (trm_atrma counter tmtpl m2)
 
 let beta_eta_norm_fixed counter m =
   try
     Some(atrma_trm counter (beta_eta_norm_a counter (trm_atrma counter [] m)))
   with
-  | CheckingBd -> None
+  | CheckingBd -> Printf.printf "checking bound reached in beta_eta\n"; None

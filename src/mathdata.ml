@@ -10,6 +10,7 @@ open Sha256
 open Hash
 open Logic
 
+let debug = ref false
 let printlist l = List.iter (fun ((x, y), z) -> Printf.printf "%s " (hashval_hexstring x)) l
 
 (** ** tp serialization ***)
@@ -66,47 +67,47 @@ let hashtpl al =
 (** ** tm serialization ***)
 let rec seo_tm o m c =
   match m with
-  | TmH(h) -> (*** 000 ***)
+  | TmH(_,h) -> (*** 000 ***)
     let c = o 3 0 c in
     let c = seo_hashval o h c in
     c
-  | DB(x) when x >= 0 && x <= 65535 -> (*** 001 ***)
+  | DB(_,x) when x >= 0 && x <= 65535 -> (*** 001 ***)
     let c = o 3 1 c in
     seo_varintb o x c
-  | DB(x) ->
+  | DB(_,x) ->
     raise (Failure "seo_tm - de Bruijn out of bounds");
-  | Prim(x) when x >= 0 && x <= 65535 -> (*** 010 ***)
+  | Prim(_,x) when x >= 0 && x <= 65535 -> (*** 010 ***)
     let c = o 3 2 c in
     let c = seo_varintb o x c in
     c
-  | Prim(x) ->
+  | Prim(_,x) ->
     raise (Failure "seo_tm - Prim out of bounds");
-  | Ap(m0,m1) -> (*** 011 ***)
+  | Ap(_,m0,m1) -> (*** 011 ***)
     let c = o 3 3 c in
     let c = seo_tm o m0 c in
     let c = seo_tm o m1 c in
     c
-  | Lam(m0,m1) -> (*** 100 ***)
+  | Lam(_,m0,m1) -> (*** 100 ***)
     let c = o 3 4 c in
     let c = seo_tp o m0 c in
     let c = seo_tm o m1 c in
     c
-  | Imp(m0,m1) -> (*** 101 ***)
+  | Imp(_,m0,m1) -> (*** 101 ***)
     let c = o 3 5 c in
     let c = seo_tm o m0 c in
     let c = seo_tm o m1 c in
     c
-  | All(m0,m1) -> (*** 110 ***)
+  | All(_,m0,m1) -> (*** 110 ***)
     let c = o 3 6 c in
     let c = seo_tp o m0 c in
     let c = seo_tm o m1 c in
     c
-  | Ex(a,m1) -> (*** 111 0 ***)
+  | Ex(_,a,m1) -> (*** 111 0 ***)
     let c = o 4 7 c in
     let c = seo_tp o a c in
     let c = seo_tm o m1 c in
     c
-  | Eq(a,m1,m2) -> (*** 111 1 ***)
+  | Eq(_,a,m1,m2) -> (*** 111 1 ***)
     let c = o 4 15 c in
     let c = seo_tp o a c in
     let c = seo_tm o m1 c in
@@ -124,74 +125,74 @@ let rec sei_tm i c =
   let (x,c) = i 3 c in
   if x = 0 then
     let (h,c) = sei_hashval i c in
-    (TmH(h),c)
+    (TmH(0,h),c)
   else if x = 1 then
     let (z,c) = sei_varintb i c in
-    (DB(z),c)
+    (DB(0,z),c)
   else if x = 2 then
     let (z,c) = sei_varintb i c in
-    (Prim(z),c)
+    (Prim(0,z),c)
   else if x = 3 then
     let (m0,c) = sei_tm i c in
     let (m1,c) = sei_tm i c in
-    (Ap(m0,m1),c)
+    (Ap(0,m0,m1),c)
   else if x = 4 then
     let (m0,c) = sei_tp i c in
     let (m1,c) = sei_tm i c in
-    (Lam(m0,m1),c)
+    (Lam(0,m0,m1),c)
   else if x = 5 then
     let (m0,c) = sei_tm i c in
     let (m1,c) = sei_tm i c in
-    (Imp(m0,m1),c)
+    (Imp(0,m0,m1),c)
   else if x = 6 then
     let (m0,c) = sei_tp i c in
     let (m1,c) = sei_tm i c in
-    (All(m0,m1),c)
+    (All(0,m0,m1),c)
   else
     let (y,c) = i 1 c in
     if y = 0 then
       let (a,c) = sei_tp i c in
       let (m0,c) = sei_tm i c in
-      (Ex(a,m0),c)
+      (Ex(0,a,m0),c)
     else
       let (a,c) = sei_tp i c in
       let (m0,c) = sei_tm i c in
       let (m1,c) = sei_tm i c in
-      (Eq(a,m0,m1),c)
+      (Eq(0,a,m0,m1),c)
 
 (** ** pf serialization ***)
 let rec seo_pf o m c =
   match m with
-  | Hyp(x) when x >= 0 && x <= 65535 -> (*** 001 ***)
+  | Hyp(_,x) when x >= 0 && x <= 65535 -> (*** 001 ***)
     let c = o 3 1 c in
     seo_varintb o x c
-  | Hyp(x) ->
+  | Hyp(_,x) ->
     raise (Failure "seo_pf - Hypothesis out of bounds");
-  | Known(h) -> (*** 010 ***)
+  | Known(_,h) -> (*** 010 ***)
     let c = o 3 2 c in
     let c = seo_hashval o h c in
     c
-  | TmAp(m0,m1) -> (*** 011 ***)
+  | TmAp(_,m0,m1) -> (*** 011 ***)
     let c = o 3 3 c in
     let c = seo_pf o m0 c in
     let c = seo_tm o m1 c in
     c
-  | PrAp(m0,m1) -> (*** 100 ***)
+  | PrAp(_,m0,m1) -> (*** 100 ***)
     let c = o 3 4 c in
     let c = seo_pf o m0 c in
     let c = seo_pf o m1 c in
     c
-  | PrLa(m0,m1) -> (*** 101 ***)
+  | PrLa(_,m0,m1) -> (*** 101 ***)
     let c = o 3 5 c in
     let c = seo_tm o m0 c in
     let c = seo_pf o m1 c in
     c
-  | TmLa(m0,m1) -> (*** 110 ***)
+  | TmLa(_,m0,m1) -> (*** 110 ***)
     let c = o 3 6 c in
     let c = seo_tp o m0 c in
     let c = seo_pf o m1 c in
     c
-  | Ext(a,b) -> (*** 111 ***)
+  | Ext(_,a,b) -> (*** 111 ***)
     let c = o 3 7 c in
     let c = seo_tp o a c in
     let c = seo_tp o b c in
@@ -210,30 +211,30 @@ let rec sei_pf i c =
     failwith "GPA"
   else if x = 1 then
     let (z,c) = sei_varintb i c in
-    (Hyp(z),c)
+    (Hyp(0,z),c)
   else if x = 2 then
     let (z,c) = sei_hashval i c in
-    (Known(z),c)
+    (Known(0,z),c)
   else if x = 3 then
     let (m0,c) = sei_pf i c in
     let (m1,c) = sei_tm i c in
-    (TmAp(m0,m1),c)
+    (TmAp(0,m0,m1),c)
   else if x = 4 then
     let (m0,c) = sei_pf i c in
     let (m1,c) = sei_pf i c in
-    (PrAp(m0,m1),c)
+    (PrAp(0,m0,m1),c)
   else if x = 5 then
     let (m0,c) = sei_tm i c in
     let (m1,c) = sei_pf i c in
-    (PrLa(m0,m1),c)
+    (PrLa(0,m0,m1),c)
   else if x = 6 then
     let (m0,c) = sei_tp i c in
     let (m1,c) = sei_pf i c in
-    (TmLa(m0,m1),c)
+    (TmLa(0,m0,m1),c)
   else
     let (a,c) = sei_tp i c in
     let (b,c) = sei_tp i c in
-    (Ext(a,b),c)
+    (Ext(0,a,b),c)
 
 (** ** theoryspec serialization ***)
 let seo_theoryitem o m c =
@@ -318,24 +319,24 @@ let signaspec_to_str m =
 (** ** doc serialization ***)
 let seo_docitem o m c =
   match m with
-  | Docsigna(h) -> (** 00 0 **)
+  | Docsigna(_,h) -> (** 00 0 **)
     let c = o 3 0 c in
     seo_hashval o h c
-  | Docparam(h,a) -> (** 00 1 **)
+  | Docparam(_,h,a) -> (** 00 1 **)
     let c = o 3 4 c in
     let c = seo_hashval o h c in
     seo_tp o a c
-  | Docdef(a,m) -> (** 01 **)
+  | Docdef(_,a,m) -> (** 01 **)
     let c = o 2 1 c in
     let c = seo_tp o a c in
     seo_tm o m c
-  | Docknown(m) -> (** 10 0 **)
+  | Docknown(_,m) -> (** 10 0 **)
     let c = o 3 2 c in
     seo_tm o m c
-  | Docconj(m) -> (** 10 1 **)
+  | Docconj(_,m) -> (** 10 1 **)
     let c = o 3 6 c in
     seo_tm o m c
-  | Docpfof(m,d) -> (** 11 **)
+  | Docpfof(_,m,d) -> (** 11 **)
     let c = o 2 3 c in
     let c = seo_tm o m c in
     seo_pf o d c
@@ -346,27 +347,27 @@ let sei_docitem i c =
     let (b,c) = i 1 c in
     if b = 0 then
       let (h,c) = sei_hashval i c in
-      (Docsigna(h),c)
+      (Docsigna(0,h),c)
     else
       let (h,c) = sei_hashval i c in
       let (a,c) = sei_tp i c in
-      (Docparam(h,a),c)
+      (Docparam(0,h,a),c)
   else if b = 1 then
     let (a,c) = sei_tp i c in
     let (m,c) = sei_tm i c in
-    (Docdef(a,m),c)
+    (Docdef(0,a,m),c)
   else if b = 2 then
     let (b,c) = i 1 c in
     if b = 0 then
       let (m,c) = sei_tm i c in
-      (Docknown(m),c)
+      (Docknown(0,m),c)
     else
       let (m,c) = sei_tm i c in
-      (Docconj(m),c)
+      (Docconj(0,m),c)
   else
     let (m,c) = sei_tm i c in
     let (d,c) = sei_pf i c in
-    (Docpfof(m,d),c)
+    (Docpfof(0,m,d),c)
 
 let seo_doc o dl c = seo_list seo_docitem o dl c
 let sei_doc i c = sei_list sei_docitem i c
@@ -408,34 +409,34 @@ module DbTheoryTree =
 (** * computation of hash roots ***)
 let rec tm_hashroot m =
   match m with
-  | TmH(h) -> h
-  | Prim(x) -> hashtag (hashint32 (Int32.of_int x)) 96l
-  | DB(x) -> hashtag (hashint32 (Int32.of_int x)) 97l
-  | Ap(m,n) -> hashtag (hashpair (tm_hashroot m) (tm_hashroot n)) 98l
-  | Lam(a,m) -> hashtag (hashpair (hashtp a) (tm_hashroot m)) 99l
-  | Imp(m,n) -> hashtag (hashpair (tm_hashroot m) (tm_hashroot n)) 100l
-  | All(a,m) -> hashtag (hashpair (hashtp a) (tm_hashroot m)) 101l
-  | Ex(a,m) -> hashtag (hashpair (hashtp a) (tm_hashroot m)) 102l
-  | Eq(a,m,n) -> hashtag (hashpair (hashpair (hashtp a) (tm_hashroot m)) (tm_hashroot n)) 103l
+  | TmH(_,h) -> h
+  | Prim(_,x) -> hashtag (hashint32 (Int32.of_int x)) 96l
+  | DB(_,x) -> hashtag (hashint32 (Int32.of_int x)) 97l
+  | Ap(_,m,n) -> hashtag (hashpair (tm_hashroot m) (tm_hashroot n)) 98l
+  | Lam(_,a,m) -> hashtag (hashpair (hashtp a) (tm_hashroot m)) 99l
+  | Imp(_,m,n) -> hashtag (hashpair (tm_hashroot m) (tm_hashroot n)) 100l
+  | All(_,a,m) -> hashtag (hashpair (hashtp a) (tm_hashroot m)) 101l
+  | Ex(_,a,m) -> hashtag (hashpair (hashtp a) (tm_hashroot m)) 102l
+  | Eq(_,a,m,n) -> hashtag (hashpair (hashpair (hashtp a) (tm_hashroot m)) (tm_hashroot n)) 103l
 
 let rec pf_hashroot d =
   match d with
-  | Known(h) -> hashtag h 128l
-  | Hyp(x) -> hashtag (hashint32 (Int32.of_int x)) 129l
-  | TmAp(d,m) -> hashtag (hashpair (pf_hashroot d) (tm_hashroot m)) 130l
-  | PrAp(d,e) -> hashtag (hashpair (pf_hashroot d) (pf_hashroot e)) 131l
-  | PrLa(m,d) -> hashtag (hashpair (tm_hashroot m) (pf_hashroot d)) 132l
-  | TmLa(a,d) -> hashtag (hashpair (hashtp a) (pf_hashroot d)) 133l
-  | Ext(a,b) -> hashtag (hashpair (hashtp a) (hashtp b)) 134l
+  | Known(_,h) -> hashtag h 128l
+  | Hyp(_,x) -> hashtag (hashint32 (Int32.of_int x)) 129l
+  | TmAp(_,d,m) -> hashtag (hashpair (pf_hashroot d) (tm_hashroot m)) 130l
+  | PrAp(_,d,e) -> hashtag (hashpair (pf_hashroot d) (pf_hashroot e)) 131l
+  | PrLa(_,m,d) -> hashtag (hashpair (tm_hashroot m) (pf_hashroot d)) 132l
+  | TmLa(_,a,d) -> hashtag (hashpair (hashtp a) (pf_hashroot d)) 133l
+  | Ext(_,a,b) -> hashtag (hashpair (hashtp a) (hashtp b)) 134l
 
 let rec docitem_hashroot d =
   match d with
-  | Docsigna(h) -> hashtag h 172l
-  | Docparam(h,a) -> hashtag (hashpair h (hashtp a)) 173l
-  | Docdef(a,m) -> hashtag (hashpair (hashtp a) (tm_hashroot m)) 174l
-  | Docknown(m) -> hashtag (tm_hashroot m) 175l
-  | Docconj(m) -> hashtag (tm_hashroot m) 176l
-  | Docpfof(m,d) -> hashtag (hashpair (tm_hashroot m) (pf_hashroot d)) 177l
+  | Docsigna(_,h) -> hashtag h 172l
+  | Docparam(_,h,a) -> hashtag (hashpair h (hashtp a)) 173l
+  | Docdef(_,a,m) -> hashtag (hashpair (hashtp a) (tm_hashroot m)) 174l
+  | Docknown(_,m) -> hashtag (tm_hashroot m) 175l
+  | Docconj(_,m) -> hashtag (tm_hashroot m) 176l
+  | Docpfof(_,m,d) -> hashtag (hashpair (tm_hashroot m) (pf_hashroot d)) 177l
 
 let rec doc_hashroot dl =
   match dl with
@@ -503,45 +504,45 @@ let rec print_tp t base_types =
 
 let rec print_trm ctx sgn t thy =
   match t with
-  | DB i -> Printf.printf "(DB %d %d )" (List.length ctx) i
-  | TmH h ->
+  | DB(pos,i) -> Printf.printf "(DB [%d] %d %d )" pos (List.length ctx) i
+  | TmH(pos,h) ->
     printlist (fst sgn);
       Printf.printf "\n";
-      Printf.printf "(TmH %s)" (hashval_hexstring h)
-  | Prim i -> Printf.printf "(Prim %d %d )" (List.length thy) i
-  | Ap (t1, t2) -> (Printf.printf "ap "; print_trm ctx sgn t1 thy; print_trm ctx sgn t2 thy)
-  | Lam (a1, t1) -> (Printf.printf "lam "; print_tp a1 (List.length thy); print_trm ctx sgn t1 thy)
-  | Imp (t1, t2) -> (Printf.printf "imp "; print_trm ctx sgn t1 thy; print_trm ctx sgn t2 thy)
-  | All (b, t1) -> (Printf.printf "all "; print_tp b (List.length thy); print_trm ctx sgn t1 thy)
-  | Ex (b, t1) -> (Printf.printf "ex "; print_tp b (List.length thy); print_trm ctx sgn t1 thy)
-  | Eq (b, t1, t2) -> (Printf.printf "eq "; print_tp b (List.length thy); print_trm ctx sgn t1 thy; print_trm ctx sgn t2 thy)
+      Printf.printf "(TmH [%d] %s)" pos (hashval_hexstring h)
+  | Prim(pos,i) -> Printf.printf "(Prim [%d] %d %d )" pos (List.length thy) i
+  | Ap (pos, t1, t2) -> (Printf.printf "ap [%d] " pos; print_trm ctx sgn t1 thy; print_trm ctx sgn t2 thy)
+  | Lam (pos, a1, t1) -> (Printf.printf "lam [%d] " pos; print_tp a1 (List.length thy); print_trm ctx sgn t1 thy)
+  | Imp (pos, t1, t2) -> (Printf.printf "imp [%d] " pos; print_trm ctx sgn t1 thy; print_trm ctx sgn t2 thy)
+  | All (pos, b, t1) -> (Printf.printf "all [%d] " pos; print_tp b (List.length thy); print_trm ctx sgn t1 thy)
+  | Ex (pos, b, t1) -> (Printf.printf "ex [%d] " pos; print_tp b (List.length thy); print_trm ctx sgn t1 thy)
+  | Eq (pos, b, t1, t2) -> (Printf.printf "eq [%d] " pos; print_tp b (List.length thy); print_trm ctx sgn t1 thy; print_trm ctx sgn t2 thy)
 
 let rec print_pf ctx phi sg p thy =
   match p with
-  | Known h -> Printf.printf "known %s " (hashval_hexstring h)
-  | Hyp i -> Printf.printf "hypoth %d\n" i
-  | PrAp (p1, p2) ->
-    Printf.printf "proof ap (";
+  | Known (pos, h) -> Printf.printf "known [%d] %s " pos (hashval_hexstring h)
+  | Hyp (pos, i) -> Printf.printf "hypoth [%d] %d\n" pos i
+  | PrAp (pos, p1, p2) ->
+    Printf.printf "proof ap [%d] (" pos;
     print_pf ctx phi sg p1 thy;
     print_pf ctx phi sg p2 thy;
     Printf.printf ")"
-  | TmAp (p1, t1) ->
-    Printf.printf "trm ap (";
+  | TmAp (pos, p1, t1) ->
+    Printf.printf "trm ap [%d] (" pos;
     print_pf ctx phi sg p1 thy;
     print_trm ctx sg t1 thy;
     Printf.printf ")"
-  | PrLa (s, p1) ->
-    Printf.printf "proof lam (";
+  | PrLa (pos, s, p1) ->
+    Printf.printf "proof lam [%d] (" pos;
     print_pf ctx (s :: phi) sg p1 thy;
     print_trm ctx sg s thy;
     Printf.printf ")"
-  | TmLa (a1, p1) ->
-    Printf.printf "trm lam (";
+  | TmLa (pos, a1, p1) ->
+    Printf.printf "trm lam [%d] (" pos;
     print_pf (a1::ctx) phi sg p1 thy; (* (List.map (fun x -> uptrm x 0 1) phi) *)
     print_tp a1 (List.length thy);
     Printf.printf ")"
-  | Ext (a, b) ->
-    Printf.printf "ext (";
+  | Ext (pos, a, b) ->
+    Printf.printf "ext [%d] (" pos;
     print_tp a (List.length thy);
     print_tp b (List.length thy);
     Printf.printf ")"
@@ -623,7 +624,7 @@ let signaspec_uses_props (dl:signaspec) : hashval list = signaspec_uses_props_au
 
 let rec doc_uses_objs_aux (dl:doc) r : (hashval * hashval) list =
   match dl with
-  | Docparam(h,a)::dr -> doc_uses_objs_aux dr (adj (h,hashtp a) r)
+  | Docparam(_,h,a)::dr -> doc_uses_objs_aux dr (adj (h,hashtp a) r)
   | _::dr -> doc_uses_objs_aux dr r
   | [] -> r
 
@@ -631,7 +632,7 @@ let doc_uses_objs (dl:doc) : (hashval * hashval) list = doc_uses_objs_aux dl []
 
 let rec doc_uses_props_aux (dl:doc) r : hashval list =
   match dl with
-  | Docknown(p)::dr -> doc_uses_props_aux dr (adj (tm_hashroot p) r)
+  | Docknown(_,p)::dr -> doc_uses_props_aux dr (adj (tm_hashroot p) r)
   | _::dr -> doc_uses_props_aux dr r
   | [] -> r
 
@@ -639,7 +640,7 @@ let doc_uses_props (dl:doc) : hashval list = doc_uses_props_aux dl []
 
 let rec doc_creates_objs_aux (dl:doc) r : (hashval * hashval) list =
   match dl with
-  | Docdef(a,m)::dr -> doc_creates_objs_aux dr (adj (tm_hashroot m,hashtp a) r)
+  | Docdef(_,a,m)::dr -> doc_creates_objs_aux dr (adj (tm_hashroot m,hashtp a) r)
   | _::dr -> doc_creates_objs_aux dr r
   | [] -> r
 
@@ -647,24 +648,24 @@ let doc_creates_objs (dl:doc) : (hashval * hashval) list = doc_creates_objs_aux 
 
 let rec doc_creates_props_aux (dl:doc) r : hashval list =
   match dl with
-  | Docpfof(p,d)::dr -> doc_creates_props_aux dr (adj (tm_hashroot p) r)
+  | Docpfof(_,p,d)::dr -> doc_creates_props_aux dr (adj (tm_hashroot p) r)
   | _::dr -> doc_creates_props_aux dr r
   | [] -> r
 
 let doc_creates_props (dl:doc) : hashval list = doc_creates_props_aux dl []
 
-let falsehashprop = tm_hashroot (All(Prop,DB(0)))
-let neghashprop = tm_hashroot (Lam(Prop,Imp(DB(0),TmH(falsehashprop))))
+let falsehashprop = tm_hashroot (All(0,Prop,DB(0,0)))
+let neghashprop = tm_hashroot (Lam(0,Prop,Imp(0,DB(0,0),TmH(0,falsehashprop))))
 
 let invert_neg_prop p =
   match p with
-  | Imp(np,f) when tm_hashroot f = falsehashprop -> np
-  | Ap(n,np) when tm_hashroot n = neghashprop -> np
+  | Imp(_,np,f) when tm_hashroot f = falsehashprop -> np
+  | Ap(_,n,np) when tm_hashroot n = neghashprop -> np
   | _ -> raise Not_found
 
 let rec doc_creates_neg_props_aux (dl:doc) r : hashval list =
   match dl with
-  | Docpfof(p,d)::dr ->
+  | Docpfof(_,p,d)::dr ->
       begin
 	try
 	  let np = invert_neg_prop p in

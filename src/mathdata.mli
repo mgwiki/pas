@@ -8,6 +8,8 @@
 open Hash
 open Logic
 
+val debug : bool ref
+
 (** * serialization code ***)
 
 val seo_tp : (int -> int -> 'a -> 'a) -> stp -> 'a -> 'a

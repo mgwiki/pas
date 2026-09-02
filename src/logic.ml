@@ -12,24 +12,24 @@ type stp =
 | Prop
 
 type trm =
-| DB of int
-| TmH of hashval
-| Prim of int
-| Ap of trm * trm
-| Lam of stp * trm
-| Imp of trm * trm
-| All of stp * trm
-| Ex of stp * trm
-| Eq of stp * trm * trm
+| DB of int * int
+| TmH of int * hashval
+| Prim of int * int
+| Ap of int * trm * trm
+| Lam of int * stp * trm
+| Imp of int * trm * trm
+| All of int * stp * trm
+| Ex of int * stp * trm
+| Eq of int * stp * trm * trm
 
 type pf =
-| Known of hashval
-| Hyp of int
-| PrAp of pf * pf
-| TmAp of pf * trm
-| PrLa of trm * pf
-| TmLa of stp * pf
-| Ext of stp * stp
+| Known of int * hashval
+| Hyp of int * int
+| PrAp of int * pf * pf
+| TmAp of int * pf * trm
+| PrLa of int * trm * pf
+| TmLa of int * stp * pf
+| Ext of int * stp * stp
 
 type gsign = ((hashval * stp) * trm option) list * (hashval * trm) list
 
@@ -53,12 +53,12 @@ type signaspec = signaitem list
 type signa = hashval list * gsign
 
 type docitem =
-| Docsigna of hashval
-| Docparam of hashval * stp
-| Docdef of stp * trm
-| Docknown of trm
-| Docpfof of trm * pf
-| Docconj of trm
+| Docsigna of int * hashval
+| Docparam of int * hashval * stp
+| Docdef of int * stp * trm
+| Docknown of int * trm
+| Docpfof of int * trm * pf
+| Docconj of int * trm
 
 type doc = docitem list
 
